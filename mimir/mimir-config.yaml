@@ -29,10 +29,13 @@ frontend:
     backend: inmemory
 
 ruler:
+  enable_api: true
   ring:
     instance_addr: 127.0.0.1
     kvstore:
       store: inmemory
+  rule_path: /data/rules
+  poll_interval: 2m
 
 store_gateway:
   sharding_ring:
@@ -56,6 +59,11 @@ blocks_storage:
     dir: /data/tsdb
   bucket_store:
     sync_dir: /data/bucket-sync
+
+ruler_storage:
+  backend: filesystem
+  filesystem:
+    dir: /data/ruler
 
 # Limits configuration
 limits:
