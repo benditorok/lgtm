@@ -135,51 +135,27 @@ function show_logs() {
 }
 
 function run_tests() {
-    echo -e "${MAGENTA}🧪 Running OTEL test script...${NC}"
+    echo -e "${MAGENTA}🧪 Running C# OTEL test script...${NC}"
     
-    # Check if Python is available
-    if ! command -v python3 &> /dev/null; then
-        echo -e "${RED}❌ Python 3 not found. Please install Python 3.x${NC}"
+    # Check if .NET is available
+    if ! command -v dotnet &> /dev/null; then
+        echo -e "${RED}❌ .NET not found. Please install .NET SDK${NC}"
         exit 1
     fi
     
-    echo -e "${GREEN}✅ Python 3 found${NC}"
+    echo -e "${GREEN}✅ .NET found${NC}"
     
-    # Install required packages
-    echo -e "${YELLOW}📦 Installing Python dependencies...${NC}"
-    if pip3 install requests 2>/dev/null; then
-        echo -e "${GREEN}✅ Dependencies installed successfully${NC}"
-    elif pip3 install --user requests 2>/dev/null; then
-        echo -e "${GREEN}✅ Dependencies installed to user directory${NC}"
+    # Check if test.cs exists
+    if [ -f "test.cs" ]; then
+        echo -e "${GREEN}✅ Using C# test script: test.cs${NC}"
     else
-        echo -e "${YELLOW}⚠️  Could not install requests via pip. Trying with system package manager...${NC}"
-        # Check if requests is already available
-        if python3 -c "import requests" 2>/dev/null; then
-            echo -e "${GREEN}✅ Requests module already available${NC}"
-        else
-            echo -e "${YELLOW}⚠️  Python requests module not found. Please install it manually:${NC}"
-            echo -e "${YELLOW}    - On Ubuntu/Debian: sudo apt install python3-requests${NC}"
-            echo -e "${YELLOW}    - On RHEL/CentOS: sudo yum install python3-requests${NC}"
-            echo -e "${YELLOW}    - On Arch: sudo pacman -S python-requests${NC}"
-            echo -e "${YELLOW}    - Or use pipx/venv for isolated installation${NC}"
-        fi
-    fi
-    
-    # Check which test script to use (comprehensive vs basic)
-    if [ -f "test_otel.py" ]; then
-        echo -e "${GREEN}✅ Using comprehensive test_otel.py${NC}"
-        TEST_SCRIPT="test_otel.py"
-    elif [ -f "test_otel_basic.py" ]; then
-        echo -e "${YELLOW}⚠️  Using basic test_otel_basic.py (comprehensive version not found)${NC}"
-        TEST_SCRIPT="test_otel_basic.py"
-    else
-        echo -e "${RED}❌ No test script found. Please ensure test_otel.py or test_otel_basic.py exists${NC}"
+        echo -e "${RED}❌ test.cs not found. Please ensure test.cs exists${NC}"
         return 1
     fi
     
-    # Run test script
+    # Run C# test script
     echo -e "${BLUE}🚀 Sending test telemetry data...${NC}"
-    python3 "$TEST_SCRIPT"
+    ./test.cs
 }
 
 function clean_stack() {

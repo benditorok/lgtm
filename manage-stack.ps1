@@ -145,60 +145,30 @@ function Show-Logs {
 }
 
 function Invoke-Tests {
-    Write-Host "🧪 Running OTEL test script..." -ForegroundColor Magenta
+    Write-Host "🧪 Running C# OTEL test script..." -ForegroundColor Magenta
     
-    # Check if Python is available
+    # Check if .NET is available
     try {
-        python --version | Out-Null
-        Write-Host "✅ Python found" -ForegroundColor Green
+        dotnet --version | Out-Null
+        Write-Host "✅ .NET found" -ForegroundColor Green
     }
     catch {
-        Write-Host "❌ Python not found. Please install Python 3.x" -ForegroundColor Red
+        Write-Host "❌ .NET not found. Please install .NET SDK" -ForegroundColor Red
         return
     }
     
-    # Install required packages
-    Write-Host "📦 Installing Python dependencies..." -ForegroundColor Yellow
-    try {
-        pip install requests 2>$null
-        Write-Host "✅ Dependencies installed successfully" -ForegroundColor Green
-    }
-    catch {
-        try {
-            pip install --user requests 2>$null
-            Write-Host "✅ Dependencies installed to user directory" -ForegroundColor Green
-        }
-        catch {
-            Write-Host "⚠️  Could not install requests via pip. Checking if already available..." -ForegroundColor Yellow
-            try {
-                python -c "import requests" 2>$null
-                Write-Host "✅ Requests module already available" -ForegroundColor Green
-            }
-            catch {
-                Write-Host "⚠️  Python requests module not found. Please install it manually:" -ForegroundColor Yellow
-                Write-Host "    - Use: pip install requests (or pip install --user requests)" -ForegroundColor Yellow
-                Write-Host "    - Or install via system package manager" -ForegroundColor Yellow
-            }
-        }
-    }
-    
-    # Check which test script to use (comprehensive vs basic)
-    if (Test-Path "test_otel.py") {
-        Write-Host "✅ Using comprehensive test_otel.py" -ForegroundColor Green
-        $testScript = "test_otel.py"
-    }
-    elseif (Test-Path "test_otel_basic.py") {
-        Write-Host "⚠️  Using basic test_otel_basic.py (comprehensive version not found)" -ForegroundColor Yellow
-        $testScript = "test_otel_basic.py"
+    # Check if test.cs exists
+    if (Test-Path "test.cs") {
+        Write-Host "✅ Using C# test script: test.cs" -ForegroundColor Green
     }
     else {
-        Write-Host "❌ No test script found. Please ensure test_otel.py or test_otel_basic.py exists" -ForegroundColor Red
+        Write-Host "❌ test.cs not found. Please ensure test.cs exists" -ForegroundColor Red
         return
     }
     
-    # Run test script
+    # Run C# test script
     Write-Host "🚀 Sending test telemetry data..."
-    python $testScript
+    .\test.cs
     
     Write-Host ""
     Write-Host "✅ Test completed! Check Grafana at http://localhost:3000" -ForegroundColor Green
