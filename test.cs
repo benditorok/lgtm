@@ -30,6 +30,7 @@ var resourceBuilder = ResourceBuilder.CreateDefault()
     });
 
 var tracingProvider = Sdk.CreateTracerProviderBuilder()
+    .SetResourceBuilder(resourceBuilder)
     .AddSource(ActivitySourceName)
     .AddOtlpExporter(options =>
     {
@@ -53,11 +54,14 @@ var loggerFactory = LoggerFactory.Create(builder =>
 {
     builder.AddOpenTelemetry(logging =>
     {
-        logging.AddOtlpExporter(options =>
-        {
-            options.Endpoint = new Uri("http://127.0.0.1:4318");
-            options.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf;
-        });
+
+        logging
+            .SetResourceBuilder(resourceBuilder)
+            .AddOtlpExporter(options =>
+            {
+                options.Endpoint = new Uri("http://127.0.0.1:4318");
+                options.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf;
+            });
     });
 });
 
