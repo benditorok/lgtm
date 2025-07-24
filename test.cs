@@ -3,20 +3,23 @@
 #:package OpenTelemetry@1.12.0
 #:package OpenTelemetry.Exporter.OpenTelemetryProtocol@1.12.0
 
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
+using Microsoft.Extensions.Logging;
 using OpenTelemetry;
-using OpenTelemetry.Exporter.OpenTelemetryProtocol;
-using OpenTelemetry.Metrics;
-using OpenTelemetry.Trace;
 using OpenTelemetry.Logs;
+using OpenTelemetry.Trace;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
 
-private const string ServiceName = "LGTM";
-private const string ActivitySourceName = "TestingSource";
-private const string MeterName = "TestMeter";
-private const string CounterName = "TestCounter";
+const string ServiceName = "LGTM";
+const string ActivitySourceName = "TestingSource";
+const string MeterName = "TestMeter";
+const string CounterName = "TestCounter";
 
-private static readonly ActivitySource ActivitySource = new ActivitySource(SourceName);
-private static readonly Meter TestMeter = new(MeterName);
-private static readonly Counter<long> TestCounter = TestMeter.CreateCounter<long>(CounterName);
+ActivitySource ActivitySource = new ActivitySource(ActivitySourceName);
+Meter TestMeter = new(MeterName);
+Counter<long> TestCounter = TestMeter.CreateCounter<long>(CounterName);
 
 var resourceBuilder = ResourceBuilder.CreateDefault()
     .AddService(ServiceName, serviceVersion: "0.1.0", serviceInstanceId: Environment.MachineName)
@@ -30,8 +33,8 @@ var tracingProvider = Sdk.CreateTracerProviderBuilder()
     .AddSource(ActivitySourceName)
     .AddOtlpExporter(options =>
     {
-        options.Endpoint = new Uri("http://localhost:4318");
-        options.Protocol = OtlpExportProtocol.HttpProtobuf;
+        options.Endpoint = new Uri("http://127.0.0.1:4318");
+        options.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf;
     })
     .Build();
 
@@ -40,8 +43,8 @@ var meterProvider = Sdk.CreateMeterProviderBuilder()
     .AddMeter(MeterName)
     .AddOtlpExporter(options =>
     {
-        options.Endpoint = new Uri("http://localhost:4318");
-        options.Protocol = OtlpExportProtocol.HttpProtobuf;
+        options.Endpoint = new Uri("http://127.0.0.1:4318");
+        options.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf;
     })
     .Build();
 
@@ -50,7 +53,11 @@ var loggerFactory = LoggerFactory.Create(builder =>
 {
     builder.AddOpenTelemetry(logging =>
     {
-        logging.AddConsoleExporter();
+        logging.AddOtlpExporter(options =>
+        {
+            options.Endpoint = new Uri("http://127.0.0.1:4318");
+            options.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf;
+        });
     });
 });
 
