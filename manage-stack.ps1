@@ -41,17 +41,17 @@ function Start-Stack {
         Write-Host "✅ Stack started successfully!" -ForegroundColor Green
         Write-Host ""
         Write-Host "🌐 Externally accessible URLs:"
-        Write-Host "   • Grafana Web UI:    http://localhost:3000 (admin/admin123)"
-        Write-Host "   • OTLP gRPC:         localhost:4317 (for applications)"
-        Write-Host "   • OTLP HTTP:         localhost:4318 (for applications)"
-        Write-Host "   • OTEL Health:       http://localhost:13133 (health checks)"
+        Write-Host "   • Grafana Web UI:    http://localhost:$($env:GRAFANA_PORT ?? '3000') ($($env:GRAFANA_ADMIN_USER ?? 'admin')/$($env:GRAFANA_ADMIN_PASSWORD ?? 'admin123'))"
+        Write-Host "   • OTLP gRPC:         localhost:$($env:OTEL_GRPC_PORT ?? '4317') (for applications)"
+        Write-Host "   • OTLP HTTP:         localhost:$($env:OTEL_HTTP_PORT ?? '4318') (for applications)"
+        Write-Host "   • OTEL Health:       http://localhost:$($env:OTEL_HEALTH_PORT ?? '13133') (health checks)"
         Write-Host ""
         Write-Host "🔒 Internal services (accessible only within container network):"
-        Write-Host "   • Prometheus:        http://prometheus:9090"
-        Write-Host "   • Mimir:             http://mimir:8080"
-        Write-Host "   • Loki:              http://loki:3100"
-        Write-Host "   • Tempo:             http://tempo:3200"
-        Write-Host "   • OTEL Self-Monitor: http://otel-collector:8888"
+        Write-Host "   • Prometheus:        http://prometheus:$($env:PROMETHEUS_INTERNAL_PORT ?? '9090')"
+        Write-Host "   • Mimir:             http://mimir:$($env:MIMIR_INTERNAL_PORT ?? '8080')"
+        Write-Host "   • Loki:              http://loki:$($env:LOKI_INTERNAL_PORT ?? '3100')"
+        Write-Host "   • Tempo:             http://tempo:$($env:TEMPO_INTERNAL_PORT ?? '3200')"
+        Write-Host "   • OTEL Self-Monitor: http://otel-collector:$($env:OTEL_METRICS_PORT ?? '8888')"
         Write-Host ""
         Write-Host "⏱️  Please wait a few minutes for all services to be ready..."
     }
@@ -93,16 +93,16 @@ function Show-Status {
     
     # Check each service
     $services = @(
-        @{Name = "Grafana"; URL = "http://localhost:3000/api/health" },
-        @{Name = "OTEL-Collector"; URL = "http://localhost:13133" }
+        @{Name = "Grafana"; URL = "http://localhost:$($env:GRAFANA_PORT ?? '3000')/api/health" },
+        @{Name = "OTEL-Collector"; URL = "http://localhost:$($env:OTEL_HEALTH_PORT ?? '13133')" }
     )
     
     # Internal services (only accessible if using port forwarding)
     $internalServices = @(
-        @{Name = "Prometheus"; Port = "9090"; Container = "prometheus" },
-        @{Name = "Mimir"; Port = "8080"; Container = "mimir" },
-        @{Name = "Loki"; Port = "3100"; Container = "loki" },
-        @{Name = "Tempo"; Port = "3200"; Container = "tempo" }
+        @{Name = "Prometheus"; Port = "$($env:PROMETHEUS_INTERNAL_PORT ?? '9090')"; Container = "prometheus" },
+        @{Name = "Mimir"; Port = "$($env:MIMIR_INTERNAL_PORT ?? '8080')"; Container = "mimir" },
+        @{Name = "Loki"; Port = "$($env:LOKI_INTERNAL_PORT ?? '3100')"; Container = "loki" },
+        @{Name = "Tempo"; Port = "$($env:TEMPO_INTERNAL_PORT ?? '3200')"; Container = "tempo" }
     )
     
     foreach ($service in $services) {
@@ -240,8 +240,14 @@ function Show-Debug {
     
     # Check ports
     Write-Host "🔌 Port Usage:" -ForegroundColor Cyan
-    netstat -an | Select-String ":3000|:4317|:4318|:13133" | ForEach-Object { Write-Host "  $_" }
-    Write-Host "  Note: Internal ports (3100,3200,8080,8888,9090) are not exposed externally"
+    $grafanaPort = $env:GRAFANA_PORT ?? '3000'
+    $otelGrpcPort = $env:OTEL_GRPC_PORT ?? '4317'
+    $otelHttpPort = $env:OTEL_HTTP_PORT ?? '4318'
+    $otelHealthPort = $env:OTEL_HEALTH_PORT ?? '13133'
+    $internalPorts = "$($env:LOKI_INTERNAL_PORT ?? '3100'),$($env:TEMPO_INTERNAL_PORT ?? '3200'),$($env:MIMIR_INTERNAL_PORT ?? '8080'),$($env:OTEL_METRICS_PORT ?? '8888'),$($env:PROMETHEUS_INTERNAL_PORT ?? '9090')"
+    
+    netstat -an | Select-String ":$grafanaPort|:$otelGrpcPort|:$otelHttpPort|:$otelHealthPort" | ForEach-Object { Write-Host "  $_" }
+    Write-Host "  Note: Internal ports ($internalPorts) are not exposed externally"
 }
 
 # Main execution

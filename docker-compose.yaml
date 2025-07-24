@@ -1,20 +1,20 @@
 services:
   # OpenTelemetry Collector - Central telemetry router
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.91.0
+    image: otel/opentelemetry-collector-contrib:${OTEL_COLLECTOR_VERSION}
     container_name: otel-collector
-    restart: unless-stopped
+    restart: ${RESTART_POLICY}
     command: ["--config=/etc/otel-collector-config.yaml"]
     volumes:
       - ./otel-collector/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
     ports:
       # Exposed externally for applications to send telemetry data
-      - "4317:4317"   # OTLP gRPC receiver
-      - "4318:4318"   # OTLP HTTP receiver
-      - "13133:13133" # Health check endpoint
+      - "${OTEL_GRPC_PORT}:4317"   # OTLP gRPC receiver
+      - "${OTEL_HTTP_PORT}:4318"   # OTLP HTTP receiver
+      - "${OTEL_HEALTH_PORT}:13133" # Health check endpoint
     expose:
       # Internal ports for monitoring
-      - "8888"        # Prometheus metrics (self-monitoring)
+      - "${OTEL_METRICS_PORT}"        # Prometheus metrics (self-monitoring)
     depends_on:
       - loki
       - tempo
@@ -22,41 +22,41 @@ services:
       - mimir
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:13133/"]
-      timeout: 5s
-      interval: 10s
-      retries: 3
+      timeout: ${HEALTH_CHECK_TIMEOUT}
+      interval: ${HEALTH_CHECK_INTERVAL}
+      retries: ${HEALTH_CHECK_RETRIES}
 
   # Loki - Log aggregation system
   loki:
-    image: grafana/loki:2.9.0
+    image: grafana/loki:${LOKI_VERSION}
     container_name: loki
-    restart: unless-stopped
+    restart: ${RESTART_POLICY}
     # Port 3100 only accessible internally
     expose:
-      - "3100"
+      - "${LOKI_INTERNAL_PORT}"
     volumes:
       - ./loki/loki-config.yaml:/etc/loki/local-config.yaml:ro
       - ./data/loki:/loki
     command: -config.file=/etc/loki/local-config.yaml
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3100/ready || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:${LOKI_INTERNAL_PORT}/ready || exit 1"]
+      interval: ${HEALTH_CHECK_INTERVAL}
+      timeout: ${HEALTH_CHECK_TIMEOUT}
+      retries: ${HEALTH_CHECK_RETRIES}
 
   # Grafana - Observability visualization (Web UI)
   grafana:
-    image: grafana/grafana:10.2.0
+    image: grafana/grafana:${GRAFANA_VERSION}
     container_name: grafana
-    restart: unless-stopped
+    restart: ${RESTART_POLICY}
     ports:
       # Exposed externally for web UI access
-      - "3000:3000"
+      - "${GRAFANA_PORT}:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin123
-      - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_SERVER_ROOT_URL=http://localhost:3000
-      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=${GF_USERS_ALLOW_SIGN_UP}
+      - GF_SERVER_ROOT_URL=http://${EXTERNAL_HOST}:${GRAFANA_PORT}
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER}
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - ./data/grafana:/var/lib/grafana
@@ -67,69 +67,69 @@ services:
       - mimir
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      interval: ${EXTENDED_HEALTH_INTERVAL}
+      timeout: ${EXTENDED_HEALTH_TIMEOUT}
+      retries: ${EXTENDED_HEALTH_RETRIES}
 
   # Tempo - Distributed tracing backend
   tempo:
-    image: grafana/tempo:2.3.0
+    image: grafana/tempo:${TEMPO_VERSION}
     container_name: tempo
-    restart: unless-stopped
+    restart: ${RESTART_POLICY}
     command: ["-config.file=/etc/tempo.yaml"]
     volumes:
       - ./tempo/tempo-config.yaml:/etc/tempo.yaml:ro
       - ./data/tempo:/tmp/tempo
     # Port 3200 only accessible internally
     expose:
-      - "3200"
+      - "${TEMPO_INTERNAL_PORT}"
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3200/ready || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:${TEMPO_INTERNAL_PORT}/ready || exit 1"]
+      interval: ${EXTENDED_HEALTH_INTERVAL}
+      timeout: ${EXTENDED_HEALTH_TIMEOUT}
+      retries: ${EXTENDED_HEALTH_RETRIES}
 
   # Mimir - Scalable long-term metrics storage
   mimir:
-    image: grafana/mimir:2.10.0
+    image: grafana/mimir:${MIMIR_VERSION}
     container_name: mimir
-    restart: unless-stopped
+    restart: ${RESTART_POLICY}
     command: ["-config.file=/etc/mimir.yaml"]
     volumes:
       - ./mimir/mimir-config.yaml:/etc/mimir.yaml:ro
       - ./data/mimir:/data
     # Ports only accessible internally
     expose:
-      - "8080"   # HTTP server
-      - "7946"   # Gossip ring
+      - "${MIMIR_INTERNAL_PORT}"   # HTTP server
+      - "${MIMIR_GOSSIP_PORT}"   # Gossip ring
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/ready || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:${MIMIR_INTERNAL_PORT}/ready || exit 1"]
+      interval: ${EXTENDED_HEALTH_INTERVAL}
+      timeout: ${EXTENDED_HEALTH_TIMEOUT}
+      retries: ${EXTENDED_HEALTH_RETRIES}
 
   # Metrics - Prometheus for metrics storage
   prometheus:
-    image: prom/prometheus:v2.47.0
+    image: prom/prometheus:${PROMETHEUS_VERSION}
     container_name: prometheus
-    restart: unless-stopped
+    restart: ${RESTART_POLICY}
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
       - '--web.console.libraries=/etc/prometheus/console_libraries'
       - '--web.console.templates=/etc/prometheus/consoles'
-      - '--storage.tsdb.retention.time=15d'
+      - '--storage.tsdb.retention.time=${PROMETHEUS_RETENTION}'
       - '--web.enable-lifecycle'
     # Port 9090 only accessible internally
     expose:
-      - "9090"
+      - "${PROMETHEUS_INTERNAL_PORT}"
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./data/prometheus:/prometheus
     depends_on:
       - mimir
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:${PROMETHEUS_INTERNAL_PORT}/-/healthy"]
+      interval: ${EXTENDED_HEALTH_INTERVAL}
+      timeout: ${EXTENDED_HEALTH_TIMEOUT}
+      retries: ${EXTENDED_HEALTH_RETRIES}

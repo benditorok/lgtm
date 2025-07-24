@@ -42,17 +42,17 @@ function start_stack() {
         echo -e "${GREEN}✅ Stack started successfully!${NC}"
         echo ""
         echo -e "${CYAN}🌐 Externally accessible URLs:${NC}"
-        echo "   • Grafana Web UI:    http://localhost:3000 (admin/admin123)"
-        echo "   • OTLP gRPC:         localhost:4317 (for applications)"
-        echo "   • OTLP HTTP:         localhost:4318 (for applications)"
-        echo "   • OTEL Health:       http://localhost:13133 (health checks)"
+        echo "   • Grafana Web UI:    http://localhost:${GRAFANA_PORT:-3000} (${GRAFANA_ADMIN_USER:-admin}/${GRAFANA_ADMIN_PASSWORD:-admin123})"
+        echo "   • OTLP gRPC:         localhost:${OTEL_GRPC_PORT:-4317} (for applications)"
+        echo "   • OTLP HTTP:         localhost:${OTEL_HTTP_PORT:-4318} (for applications)"
+        echo "   • OTEL Health:       http://localhost:${OTEL_HEALTH_PORT:-13133} (health checks)"
         echo ""
         echo -e "${CYAN}🔒 Internal services (accessible only within container network):${NC}"
-        echo "   • Prometheus:        http://prometheus:9090"
-        echo "   • Mimir:             http://mimir:8080"
-        echo "   • Loki:              http://loki:3100"
-        echo "   • Tempo:             http://tempo:3200"
-        echo "   • OTEL Self-Monitor: http://otel-collector:8888"
+        echo "   • Prometheus:        http://prometheus:${PROMETHEUS_INTERNAL_PORT:-9090}"
+        echo "   • Mimir:             http://mimir:${MIMIR_INTERNAL_PORT:-8080}"
+        echo "   • Loki:              http://loki:${LOKI_INTERNAL_PORT:-3100}"
+        echo "   • Tempo:             http://tempo:${TEMPO_INTERNAL_PORT:-3200}"
+        echo "   • OTEL Self-Monitor: http://otel-collector:${OTEL_METRICS_PORT:-8888}"
         echo ""
         echo -e "${YELLOW}⏱️  Please wait a few minutes for all services to be ready...${NC}"
     else
@@ -94,8 +94,8 @@ function show_status() {
     
     # Check externally accessible services
     services=(
-        "Grafana:http://localhost:3000/api/health"
-        "OTEL-Collector:http://localhost:13133"
+        "Grafana:http://localhost:${GRAFANA_PORT:-3000}/api/health"
+        "OTEL-Collector:http://localhost:${OTEL_HEALTH_PORT:-13133}"
     )
     
     for service_info in "${services[@]}"; do
@@ -111,7 +111,7 @@ function show_status() {
     echo -e "${CYAN}🔒 Internal Services Status:${NC}"
     
     # Check internal services by container status
-    internal_services=("prometheus:9090" "mimir:8080" "loki:3100" "tempo:3200")
+    internal_services=("prometheus:${PROMETHEUS_INTERNAL_PORT:-9090}" "mimir:${MIMIR_INTERNAL_PORT:-8080}" "loki:${LOKI_INTERNAL_PORT:-3100}" "tempo:${TEMPO_INTERNAL_PORT:-3200}")
     
     for service_info in "${internal_services[@]}"; do
         IFS=':' read -r container port <<< "$service_info"
@@ -223,10 +223,10 @@ function show_debug() {
     
     # Check ports
     echo -e "${CYAN}🔌 Port Usage:${NC}"
-    netstat -tuln | grep -E ':3000|:4317|:4318|:13133' | while read line; do
+    netstat -tuln | grep -E ":${GRAFANA_PORT:-3000}|:${OTEL_GRPC_PORT:-4317}|:${OTEL_HTTP_PORT:-4318}|:${OTEL_HEALTH_PORT:-13133}" | while read line; do
         echo "  $line"
     done
-    echo "  Note: Internal ports (3100,3200,8080,8888,9090) are not exposed externally"
+    echo "  Note: Internal ports (${LOKI_INTERNAL_PORT:-3100},${TEMPO_INTERNAL_PORT:-3200},${MIMIR_INTERNAL_PORT:-8080},${OTEL_METRICS_PORT:-8888},${PROMETHEUS_INTERNAL_PORT:-9090}) are not exposed externally"
 }
 
 # Main execution
