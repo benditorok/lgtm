@@ -8,10 +8,13 @@ services:
     volumes:
       - ./otel-collector/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
     ports:
+      # Exposed externally for applications to send telemetry data
       - "4317:4317"   # OTLP gRPC receiver
       - "4318:4318"   # OTLP HTTP receiver
-      - "8888:8888"   # Prometheus metrics (self-monitoring)
-      - "13133:13133" # Health check endpoint
+    expose:
+      # Internal ports for monitoring and health checks
+      - "8888"        # Prometheus metrics (self-monitoring)
+      - "13133"       # Health check endpoint
     depends_on:
       - loki
       - tempo
@@ -28,8 +31,9 @@ services:
     image: grafana/loki:2.9.0
     container_name: loki
     restart: unless-stopped
-    ports:
-      - "3100:3100"
+    # Port 3100 only accessible internally
+    expose:
+      - "3100"
     volumes:
       - ./loki/loki-config.yaml:/etc/loki/local-config.yaml:ro
       - ./data/loki:/loki
@@ -40,12 +44,13 @@ services:
       timeout: 5s
       retries: 5
 
-  # Grafana - Observability visualization
+  # Grafana - Observability visualization (Web UI)
   grafana:
     image: grafana/grafana:10.2.0
     container_name: grafana
     restart: unless-stopped
     ports:
+      # Exposed externally for web UI access
       - "3000:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin123
@@ -75,8 +80,9 @@ services:
     volumes:
       - ./tempo/tempo-config.yaml:/etc/tempo.yaml:ro
       - ./data/tempo:/tmp/tempo
-    ports:
-      - "3200:3200"   # Tempo HTTP
+    # Port 3200 only accessible internally
+    expose:
+      - "3200"
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3200/ready || exit 1"]
       interval: 30s
@@ -92,9 +98,10 @@ services:
     volumes:
       - ./mimir/mimir-config.yaml:/etc/mimir.yaml:ro
       - ./data/mimir:/data
-    ports:
-      - "8080:8080"   # HTTP server
-      - "7946:7946"   # Gossip ring
+    # Ports only accessible internally
+    expose:
+      - "8080"   # HTTP server
+      - "7946"   # Gossip ring
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/ready || exit 1"]
       interval: 30s
@@ -113,8 +120,9 @@ services:
       - '--web.console.templates=/etc/prometheus/consoles'
       - '--storage.tsdb.retention.time=15d'
       - '--web.enable-lifecycle'
-    ports:
-      - "9090:9090"
+    # Port 9090 only accessible internally
+    expose:
+      - "9090"
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./data/prometheus:/prometheus
