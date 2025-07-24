@@ -12,7 +12,9 @@ using OpenTelemetry.Trace;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 
-const string ServiceName = "LGTM";
+Console.WriteLine("🔧 Initializing OpenTelemetry providers...");
+
+const string ServiceName = "LGTMTesting";
 const string ActivitySourceName = "TestingSource";
 const string MeterName = "TestMeter";
 const string CounterName = "TestCounter";
@@ -34,8 +36,9 @@ var tracingProvider = Sdk.CreateTracerProviderBuilder()
     .AddSource(ActivitySourceName)
     .AddOtlpExporter(options =>
     {
-        options.Endpoint = new Uri("http://127.0.0.1:4318");
+        options.Endpoint = new Uri("http://127.0.0.1:4318/v1/traces");
         options.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf;
+        options.ExportProcessorType = OpenTelemetry.ExportProcessorType.Simple; // Force immediate export
     })
     .Build();
 
@@ -44,8 +47,9 @@ var meterProvider = Sdk.CreateMeterProviderBuilder()
     .AddMeter(MeterName)
     .AddOtlpExporter(options =>
     {
-        options.Endpoint = new Uri("http://127.0.0.1:4318");
+        options.Endpoint = new Uri("http://127.0.0.1:4318/v1/metrics");
         options.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf;
+        options.ExportProcessorType = OpenTelemetry.ExportProcessorType.Simple; // Force immediate export
     })
     .Build();
 
@@ -59,28 +63,58 @@ var loggerFactory = LoggerFactory.Create(builder =>
             .SetResourceBuilder(resourceBuilder)
             .AddOtlpExporter(options =>
             {
-                options.Endpoint = new Uri("http://127.0.0.1:4318");
+                options.Endpoint = new Uri("http://127.0.0.1:4318/v1/logs");
                 options.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf;
+                options.ExportProcessorType = OpenTelemetry.ExportProcessorType.Simple; // Force immediate export
             });
     });
 });
 
 var logger = loggerFactory.CreateLogger<Program>();
 
-using (var activity = ActivitySource.StartActivity("SayHello"))
+Console.WriteLine("🚀 Sending telemetry data to OTEL Collector...");
+
+// Create some traces/spans
+using (var activity = ActivitySource.StartActivity("TestOperation"))
 {
-    activity?.SetTag("foo", 1);
-    activity?.SetTag("bar", "Hello, World!");
-    activity?.SetTag("baz", new int[] { 1, 2, 3 });
-    activity?.SetStatus(ActivityStatusCode.Ok);
+    activity?.SetTag("operation.name", "test-operation");
+    activity?.SetTag("user.id", "test-user");
+
+    Console.WriteLine("📊 Creating traces...");
+
+    using (var childActivity = ActivitySource.StartActivity("ChildOperation"))
+    {
+        childActivity?.SetTag("child.operation", "data-processing");
+
+        // Simulate some work
+        Thread.Sleep(100);
+
+        // Add some metrics
+        TestCounter.Add(1, new("name", "apple"), new("color", "red"));
+        TestCounter.Add(2, new("name", "lemon"), new("color", "yellow"));
+        TestCounter.Add(1, new("name", "lemon"), new("color", "yellow"));
+
+        Console.WriteLine("📈 Creating metrics...");
+
+        // Add some logs
+        logger.LogInformation("Hello, World! This is a test log message from C#.");
+        logger.LogWarning("This is a warning message with context: {Operation}", "TestOperation");
+        logger.LogError("This is an error message for testing purposes");
+
+        Console.WriteLine("📋 Creating logs...");
+
+        Thread.Sleep(50);
+    }
+
+    Thread.Sleep(100);
 }
 
+Console.WriteLine("⏳ Flushing telemetry data...");
 
-TestCounter.Add(1, new("name", "apple"), new("color", "red"));
-TestCounter.Add(2, new("name", "lemon"), new("color", "yellow"));
-TestCounter.Add(1, new("name", "lemon"), new("color", "yellow"));
+// Add a delay to ensure data is sent before disposing
+Thread.Sleep(2000);
 
-logger.LogInformation("Hello, World! This is a test log message.");
+Console.WriteLine("✅ Telemetry data sent! Check Grafana at http://localhost:3000");
 
 tracingProvider.Dispose();
 meterProvider.Dispose();
