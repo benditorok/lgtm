@@ -16,6 +16,7 @@ services:
       - loki
       - tempo
       - prometheus
+      - mimir
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:13133/"]
       timeout: 5s
@@ -58,6 +59,7 @@ services:
       - prometheus
       - loki
       - tempo
+      - mimir
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1"]
       interval: 30s
@@ -81,6 +83,24 @@ services:
       timeout: 10s
       retries: 3
 
+  # Mimir - Scalable long-term metrics storage
+  mimir:
+    image: grafana/mimir:2.10.0
+    container_name: mimir
+    restart: unless-stopped
+    command: ["-config.file=/etc/mimir.yaml"]
+    volumes:
+      - ./mimir/mimir-config.yaml:/etc/mimir.yaml:ro
+      - ./data/mimir:/data
+    ports:
+      - "8080:8080"   # HTTP server
+      - "7946:7946"   # Gossip ring
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/ready || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   # Metrics - Prometheus for metrics storage
   prometheus:
     image: prom/prometheus:v2.47.0
@@ -98,6 +118,8 @@ services:
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./data/prometheus:/prometheus
+    depends_on:
+      - mimir
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
       interval: 30s

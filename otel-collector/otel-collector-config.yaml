@@ -43,6 +43,12 @@ exporters:
     tls:
       insecure: true
 
+  # Export metrics directly to Mimir (alternative/backup path)
+  prometheusremotewrite/mimir:
+    endpoint: http://mimir:8080/api/v1/push
+    tls:
+      insecure: true
+
 extensions:
   health_check:
     endpoint: 0.0.0.0:13133
@@ -57,7 +63,7 @@ service:
     metrics:
       receivers: [otlp]
       processors: [memory_limiter, batch, resource]
-      exporters: [prometheusremotewrite]
+      exporters: [prometheusremotewrite, prometheusremotewrite/mimir]
     logs:
       receivers: [otlp]
       processors: [memory_limiter, batch, resource]

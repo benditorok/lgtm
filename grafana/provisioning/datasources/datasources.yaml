@@ -9,6 +9,16 @@ datasources:
     jsonData:
       httpMethod: POST
 
+  - name: Mimir
+    type: prometheus
+    access: proxy
+    url: http://mimir:8080/prometheus
+    isDefault: false
+    jsonData:
+      httpMethod: POST
+      # Custom headers for Mimir (if needed)
+      customQueryParameters: ""
+
   - name: Loki
     type: loki
     access: proxy

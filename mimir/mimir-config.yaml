@@ -1,0 +1,69 @@
+# Mimir single-instance configuration
+# This is a simplified configuration for development/testing
+# For production, consider multi-instance setup
+
+server:
+  http_listen_port: 8080
+  log_level: info
+
+ingester:
+  ring:
+    instance_addr: 127.0.0.1
+    kvstore:
+      store: inmemory
+    replication_factor: 1
+
+distributor:
+  ring:
+    instance_addr: 127.0.0.1
+    kvstore:
+      store: inmemory
+
+querier:
+  # Query recent data from ingesters
+  query_ingesters_within: 12h
+
+frontend:
+  # Enable query result caching
+  results_cache:
+    backend: inmemory
+
+ruler:
+  ring:
+    instance_addr: 127.0.0.1
+    kvstore:
+      store: inmemory
+
+store_gateway:
+  sharding_ring:
+    instance_addr: 127.0.0.1
+    kvstore:
+      store: inmemory
+    replication_factor: 1
+
+compactor:
+  data_dir: /data/compactor
+  sharding_ring:
+    instance_addr: 127.0.0.1
+    kvstore:
+      store: inmemory
+
+blocks_storage:
+  backend: filesystem
+  filesystem:
+    dir: /data/blocks
+  tsdb:
+    dir: /data/tsdb
+  bucket_store:
+    sync_dir: /data/bucket-sync
+
+# Limits configuration
+limits:
+  # Allow up to 1M series per tenant (adjust as needed)
+  max_global_series_per_user: 1000000
+  # Ingestion rate limits
+  ingestion_rate: 10000
+  ingestion_burst_size: 200000
+
+# Multi-tenancy (disabled for single-tenant setup)
+multitenancy_enabled: false
