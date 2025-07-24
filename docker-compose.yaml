@@ -11,10 +11,10 @@ services:
       # Exposed externally for applications to send telemetry data
       - "4317:4317"   # OTLP gRPC receiver
       - "4318:4318"   # OTLP HTTP receiver
+      - "13133:13133" # Health check endpoint
     expose:
-      # Internal ports for monitoring and health checks
+      # Internal ports for monitoring
       - "8888"        # Prometheus metrics (self-monitoring)
-      - "13133"       # Health check endpoint
     depends_on:
       - loki
       - tempo

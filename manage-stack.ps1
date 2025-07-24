@@ -44,6 +44,7 @@ function Start-Stack {
         Write-Host "   • Grafana Web UI:    http://localhost:3000 (admin/admin123)"
         Write-Host "   • OTLP gRPC:         localhost:4317 (for applications)"
         Write-Host "   • OTLP HTTP:         localhost:4318 (for applications)"
+        Write-Host "   • OTEL Health:       http://localhost:13133 (health checks)"
         Write-Host ""
         Write-Host "🔒 Internal services (accessible only within container network):"
         Write-Host "   • Prometheus:        http://prometheus:9090"
@@ -157,12 +158,47 @@ function Invoke-Tests {
     }
     
     # Install required packages
-    Write-Host "📦 Installing Python dependencies..."
-    pip install requests
+    Write-Host "📦 Installing Python dependencies..." -ForegroundColor Yellow
+    try {
+        pip install requests 2>$null
+        Write-Host "✅ Dependencies installed successfully" -ForegroundColor Green
+    }
+    catch {
+        try {
+            pip install --user requests 2>$null
+            Write-Host "✅ Dependencies installed to user directory" -ForegroundColor Green
+        }
+        catch {
+            Write-Host "⚠️  Could not install requests via pip. Checking if already available..." -ForegroundColor Yellow
+            try {
+                python -c "import requests" 2>$null
+                Write-Host "✅ Requests module already available" -ForegroundColor Green
+            }
+            catch {
+                Write-Host "⚠️  Python requests module not found. Please install it manually:" -ForegroundColor Yellow
+                Write-Host "    - Use: pip install requests (or pip install --user requests)" -ForegroundColor Yellow
+                Write-Host "    - Or install via system package manager" -ForegroundColor Yellow
+            }
+        }
+    }
+    
+    # Check which test script to use (comprehensive vs basic)
+    if (Test-Path "test_otel.py") {
+        Write-Host "✅ Using comprehensive test_otel.py" -ForegroundColor Green
+        $testScript = "test_otel.py"
+    }
+    elseif (Test-Path "test_otel_basic.py") {
+        Write-Host "⚠️  Using basic test_otel_basic.py (comprehensive version not found)" -ForegroundColor Yellow
+        $testScript = "test_otel_basic.py"
+    }
+    else {
+        Write-Host "❌ No test script found. Please ensure test_otel.py or test_otel_basic.py exists" -ForegroundColor Red
+        return
+    }
     
     # Run test script
     Write-Host "🚀 Sending test telemetry data..."
-    python test_otel.py
+    python $testScript
     
     Write-Host ""
     Write-Host "✅ Test completed! Check Grafana at http://localhost:3000" -ForegroundColor Green
@@ -234,7 +270,7 @@ function Show-Debug {
     
     # Check ports
     Write-Host "🔌 Port Usage:" -ForegroundColor Cyan
-    netstat -an | Select-String ":3000|:4317|:4318" | ForEach-Object { Write-Host "  $_" }
+    netstat -an | Select-String ":3000|:4317|:4318|:13133" | ForEach-Object { Write-Host "  $_" }
     Write-Host "  Note: Internal ports (3100,3200,8080,8888,9090) are not exposed externally"
 }
 

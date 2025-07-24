@@ -45,6 +45,7 @@ function start_stack() {
         echo "   • Grafana Web UI:    http://localhost:3000 (admin/admin123)"
         echo "   • OTLP gRPC:         localhost:4317 (for applications)"
         echo "   • OTLP HTTP:         localhost:4318 (for applications)"
+        echo "   • OTEL Health:       http://localhost:13133 (health checks)"
         echo ""
         echo -e "${CYAN}🔒 Internal services (accessible only within container network):${NC}"
         echo "   • Prometheus:        http://prometheus:9090"
@@ -146,65 +147,39 @@ function run_tests() {
     
     # Install required packages
     echo -e "${YELLOW}📦 Installing Python dependencies...${NC}"
-    pip3 install requests
+    if pip3 install requests 2>/dev/null; then
+        echo -e "${GREEN}✅ Dependencies installed successfully${NC}"
+    elif pip3 install --user requests 2>/dev/null; then
+        echo -e "${GREEN}✅ Dependencies installed to user directory${NC}"
+    else
+        echo -e "${YELLOW}⚠️  Could not install requests via pip. Trying with system package manager...${NC}"
+        # Check if requests is already available
+        if python3 -c "import requests" 2>/dev/null; then
+            echo -e "${GREEN}✅ Requests module already available${NC}"
+        else
+            echo -e "${YELLOW}⚠️  Python requests module not found. Please install it manually:${NC}"
+            echo -e "${YELLOW}    - On Ubuntu/Debian: sudo apt install python3-requests${NC}"
+            echo -e "${YELLOW}    - On RHEL/CentOS: sudo yum install python3-requests${NC}"
+            echo -e "${YELLOW}    - On Arch: sudo pacman -S python-requests${NC}"
+            echo -e "${YELLOW}    - Or use pipx/venv for isolated installation${NC}"
+        fi
+    fi
     
-    # Create a simple test script
-    cat > test_otel.py << 'EOF'
-#!/usr/bin/env python3
-import requests
-import json
-import time
-
-def test_otel_endpoints():
-    print("🧪 Testing OpenTelemetry Collector endpoints...")
-    
-    # Test health endpoint
-    try:
-        response = requests.get('http://localhost:13133', timeout=5)
-        if response.status_code == 200:
-            print("✅ OTEL Collector health endpoint: OK")
-        else:
-            print(f"⚠️  OTEL Collector health endpoint: Status {response.status_code}")
-    except Exception as e:
-        print(f"❌ OTEL Collector health endpoint: {e}")
-    
-    # Test OTLP HTTP endpoint (simple test)
-    try:
-        test_data = {
-            "resourceMetrics": [{
-                "resource": {"attributes": [{"key": "service.name", "value": {"stringValue": "test-service"}}]},
-                "instrumentationLibraryMetrics": [{
-                    "instrumentationLibrary": {"name": "test"},
-                    "metrics": [{
-                        "name": "test_metric",
-                        "gauge": {"dataPoints": [{"timeUnixNano": str(int(time.time() * 1_000_000_000)), "asDouble": 42.0}]}
-                    }]
-                }]
-            }]
-        }
-        
-        headers = {'Content-Type': 'application/json'}
-        response = requests.post('http://localhost:4318/v1/metrics', 
-                               json=test_data, headers=headers, timeout=5)
-        
-        if response.status_code in [200, 202]:
-            print("✅ OTLP HTTP endpoint: Accepting metrics")
-        else:
-            print(f"⚠️  OTLP HTTP endpoint: Status {response.status_code}")
-    except Exception as e:
-        print(f"❌ OTLP HTTP endpoint: {e}")
-
-if __name__ == "__main__":
-    test_otel_endpoints()
-    print("✅ Test completed! Check Grafana at http://localhost:3000")
-EOF
+    # Check which test script to use (comprehensive vs basic)
+    if [ -f "test_otel.py" ]; then
+        echo -e "${GREEN}✅ Using comprehensive test_otel.py${NC}"
+        TEST_SCRIPT="test_otel.py"
+    elif [ -f "test_otel_basic.py" ]; then
+        echo -e "${YELLOW}⚠️  Using basic test_otel_basic.py (comprehensive version not found)${NC}"
+        TEST_SCRIPT="test_otel_basic.py"
+    else
+        echo -e "${RED}❌ No test script found. Please ensure test_otel.py or test_otel_basic.py exists${NC}"
+        return 1
+    fi
     
     # Run test script
     echo -e "${BLUE}🚀 Sending test telemetry data...${NC}"
-    python3 test_otel.py
-    
-    # Clean up
-    rm -f test_otel.py
+    python3 "$TEST_SCRIPT"
 }
 
 function clean_stack() {
@@ -272,7 +247,7 @@ function show_debug() {
     
     # Check ports
     echo -e "${CYAN}🔌 Port Usage:${NC}"
-    netstat -tuln | grep -E ':3000|:4317|:4318' | while read line; do
+    netstat -tuln | grep -E ':3000|:4317|:4318|:13133' | while read line; do
         echo "  $line"
     done
     echo "  Note: Internal ports (3100,3200,8080,8888,9090) are not exposed externally"
