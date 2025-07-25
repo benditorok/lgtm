@@ -46,6 +46,7 @@ store_gateway:
 
 compactor:
   data_dir: /data/compactor
+  deletion_delay: 12h  # 6 months retention handled by limits section
   sharding_ring:
     instance_addr: 127.0.0.1
     kvstore:
@@ -72,6 +73,8 @@ limits:
   # Ingestion rate limits
   ingestion_rate: 10000
   ingestion_burst_size: 200000
+  # Data retention (6 months for metrics)
+  compactor_blocks_retention_period: 4320h  # 180 days = 6 months
 
 # Multi-tenancy (disabled for single-tenant setup)
 multitenancy_enabled: false
