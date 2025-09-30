@@ -12,7 +12,7 @@ using OpenTelemetry.Trace;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 
-Console.WriteLine("🔧 Initializing OpenTelemetry providers...");
+Console.WriteLine("Initializing OpenTelemetry providers...");
 
 const string ServiceName = "LGTMTesting";
 const string ActivitySourceName = "TestingSource";
@@ -72,7 +72,7 @@ var loggerFactory = LoggerFactory.Create(builder =>
 
 var logger = loggerFactory.CreateLogger<Program>();
 
-Console.WriteLine("🚀 Sending telemetry data to OTEL Collector...");
+Console.WriteLine("Sending telemetry data to OTEL Collector...");
 
 // Create some traces/spans
 using (var activity = ActivitySource.StartActivity("TestOperation"))
@@ -80,7 +80,7 @@ using (var activity = ActivitySource.StartActivity("TestOperation"))
     activity?.SetTag("operation.name", "test-operation");
     activity?.SetTag("user.id", "test-user");
 
-    Console.WriteLine("📊 Creating traces...");
+    Console.WriteLine("Creating traces...");
 
     using (var childActivity = ActivitySource.StartActivity("ChildOperation"))
     {
@@ -94,14 +94,14 @@ using (var activity = ActivitySource.StartActivity("TestOperation"))
         TestCounter.Add(2, new("name", "lemon"), new("color", "yellow"));
         TestCounter.Add(1, new("name", "lemon"), new("color", "yellow"));
 
-        Console.WriteLine("📈 Creating metrics...");
+        Console.WriteLine("Creating metrics...");
 
         // Add some logs
         logger.LogInformation("Hello, World! This is a test log message from C#.");
         logger.LogWarning("This is a warning message with context: {Operation}", "TestOperation");
         logger.LogError("This is an error message for testing purposes");
 
-        Console.WriteLine("📋 Creating logs...");
+        Console.WriteLine("Creating logs...");
 
         Thread.Sleep(50);
     }
@@ -109,12 +109,9 @@ using (var activity = ActivitySource.StartActivity("TestOperation"))
     Thread.Sleep(100);
 }
 
-Console.WriteLine("⏳ Flushing telemetry data...");
+Console.WriteLine("Flushing telemetry data...");
 
-// Add a delay to ensure data is sent before disposing
-Thread.Sleep(2000);
-
-Console.WriteLine("✅ Telemetry data sent! Check Grafana at http://localhost:3000");
+Console.WriteLine("Telemetry data sent! Check Grafana at http://localhost:3000");
 
 tracingProvider.Dispose();
 meterProvider.Dispose();
